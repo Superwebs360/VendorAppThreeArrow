@@ -321,6 +321,9 @@ const vendorInfoSlice = createSlice({
     clearError(state) {
       state.error = null;
     },
+    setVendorProfile(state, action) {
+      state.vendor = action.payload;
+    },
   },
 
   extraReducers: (builder) => {
@@ -376,8 +379,13 @@ const vendorInfoSlice = createSlice({
   },
 });
 
-export const { setField, setFormData, resetWizard, clearError } =
-  vendorInfoSlice.actions;
+export const {
+  setField,
+  setFormData,
+  resetWizard,
+  clearError,
+  setVendorProfile,
+} = vendorInfoSlice.actions;
 
 export default vendorInfoSlice.reducer;
 

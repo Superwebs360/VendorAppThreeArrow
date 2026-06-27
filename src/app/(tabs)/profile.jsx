@@ -1,10 +1,16 @@
 import Section from "@/component/ProfileComponent/Section";
 import SettingRow from "@/component/ProfileComponent/SettingRow";
 import { logout } from "@/redux/authSlice";
+import {
+  fetchMyVendorProfile,
+  selectVendorProfile,
+} from "@/redux/vendorInfoSlice";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useEffect } from "react";
 import {
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,14 +18,43 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { SPACING } from "../../constants/gridConfig";
 import { Radii, Shadows, Typography, useTheme } from "../../constants/theme";
+
+// "Arbaj Khan" → "AK"
+function getInitials(name) {
+  if (!name) return "VN";
+  const parts = name.trim().split(/\s+/);
+  const initials = parts.slice(0, 2).map((p) => p[0]?.toUpperCase() || "");
+  return initials.join("") || "VN";
+}
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const dispatch = useDispatch();
+
+  const vendor = useSelector(selectVendorProfile);
+
+  useEffect(() => {
+    dispatch(fetchMyVendorProfile());
+  }, [dispatch]);
+
+  // ── Derive display fields from vendor profile ──────────────────────────────
+  const displayName =
+    vendor?.sellerDetails?.sellerName ||
+    vendor?.businessDetails?.businessName ||
+    "Vendor";
+
+  const handle =
+    (vendor?.sellerDetails?.sellerEmail &&
+      `@${vendor.sellerDetails.sellerEmail.split("@")[0]}`) ||
+    (vendor?._id && `ID: ${vendor._id.slice(-6).toUpperCase()}`) ||
+    "@vendor";
+
+  const avatarUrl = vendor?.kycDetails?.avatarUrl || null;
+  const initials = getInitials(displayName);
 
   const handleLogout = () => {
     Alert.alert(
@@ -53,18 +88,22 @@ export default function ProfileScreen() {
         {/* Profile header */}
         <View style={styles.profileHeader}>
           <View style={styles.avatarWrap}>
-            <View
-              style={[
-                styles.avatar,
-                { backgroundColor: colors.secondary + "22" },
-              ]}
-            >
-              <Text
-                style={[styles.avatarInitials, { color: colors.secondary }]}
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+            ) : (
+              <View
+                style={[
+                  styles.avatar,
+                  { backgroundColor: colors.secondary + "22" },
+                ]}
               >
-                AJ
-              </Text>
-            </View>
+                <Text
+                  style={[styles.avatarInitials, { color: colors.secondary }]}
+                >
+                  {initials}
+                </Text>
+              </View>
+            )}
             <View
               style={[
                 styles.verifiedBadge,
@@ -75,9 +114,11 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <Text style={[styles.name, { color: colors.text }]}>ARBAJ</Text>
+          <Text style={[styles.name, { color: colors.text }]}>
+            {displayName}
+          </Text>
           <Text style={[styles.handle, { color: colors.textMuted }]}>
-            @arbaj.vendor · ID: VND-4821
+            {handle}
           </Text>
 
           <View style={styles.badgeRow}>
@@ -193,6 +234,9 @@ export default function ProfileScreen() {
         {/* Shop Settings */}
         <Section title="Shop Settings" colors={colors}>
           <SettingRow
+            onPress={() =>
+              router.push("/Screens/Profile/ShopSettings/StoreInformation/main")
+            }
             icon={<Feather name="info" size={16} color={colors.secondary} />}
             label="Store Information"
             colors={colors}
