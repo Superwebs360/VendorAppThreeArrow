@@ -242,6 +242,9 @@ export default function ProfileScreen() {
             colors={colors}
           />
           <SettingRow
+            onPress={() =>
+              router.push("/Screens/Profile/ShopSettings/ShippingSettings")
+            }
             icon={<Feather name="truck" size={16} color={colors.secondary} />}
             label="Shipping Settings"
             colors={colors}
