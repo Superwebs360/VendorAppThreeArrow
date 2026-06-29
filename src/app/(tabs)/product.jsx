@@ -104,10 +104,10 @@ export default function AddProduct() {
     if (isRestoring) return;
 
     if (!authToken || !authUser) {
-      Alert.alert("Authentication Required", "Please log in to add products", [
-        { text: "Go to Login", onPress: () => router.replace("/auth/login") },
-        { text: "Cancel", onPress: () => router.back(), style: "cancel" },
-      ]);
+      // Alert.alert("Authentication Required", "Please log in to add products", [
+      //   { text: "Go to Login", onPress: () => router.replace("/auth/login") },
+      //   { text: "Cancel", onPress: () => router.back(), style: "cancel" },
+      // ]);
       return;
     }
   }, [authToken, authUser, isRestoring, router]);

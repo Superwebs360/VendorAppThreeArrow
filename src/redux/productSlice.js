@@ -190,7 +190,9 @@ export const getMyProducts = createAsyncThunk(
         `${API_BASE_URL}/api/products/my-products?${params}`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
+
       return response.data; // { products, total, page, pages, limit }
+      console.log("API RESPONSE:", response.data);
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message ||

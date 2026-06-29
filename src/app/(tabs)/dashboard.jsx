@@ -3,31 +3,43 @@ import RecentProducts from "@/component/DashboardComponent/Recentproducts";
 import StatsCards from "@/component/DashboardComponent/Statscards";
 import StoreInsights from "@/component/DashboardComponent/Storeinsights";
 import NotificationOverlay from "@/component/OrderComponent/NotificationOverlay";
-import { useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useEffect, useState } from "react";
 import { ScrollView, StatusBar, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useStore } from "react-redux";
 import { SPACING } from "../../constants/gridConfig";
 import { useTheme } from "../../constants/theme";
+import VendorSocket from "../../redux/vendorSocket";
 import AllProductsScreen from "../Screens/Product";
 
-// ── Import the same NotificationOverlay used in OrderScreen ─────────────────
 export default function Dashboard() {
   const { colors, isDark } = useTheme();
+  const store = useStore();
 
   // Notification overlay
   const [notifVisible, setNotifVisible] = useState(false);
   const [notifOrigin, setNotifOrigin] = useState(null);
 
-  // All Products screen — origin is the {x, y} of the "View All" button
+  // All Products screen
   const [allProductsVisible, setAllProductsVisible] = useState(false);
   const [viewAllOrigin, setViewAllOrigin] = useState(null);
+
+  // ── Connect socket once on mount ────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      const token = await AsyncStorage.getItem("vendorToken");
+      if (token) VendorSocket.connect(token, store);
+    })();
+
+    return () => VendorSocket.disconnect();
+  }, []);
 
   const handleBellPress = (origin) => {
     setNotifOrigin(origin);
     setNotifVisible(true);
   };
 
-  // Called by RecentProducts with the measured position of "View All"
   const handleViewAll = (origin) => {
     setViewAllOrigin(origin);
     setAllProductsVisible(true);
@@ -43,7 +55,8 @@ export default function Dashboard() {
         backgroundColor={colors.background}
       />
 
-      <DashboardHeader onBellPress={handleBellPress} />
+      {/* Pass colors so DashboardHeader can render UnreadBadge */}
+      <DashboardHeader onBellPress={handleBellPress} colors={colors} />
 
       <ScrollView
         style={styles.scroll}
@@ -65,7 +78,6 @@ export default function Dashboard() {
         isDark={isDark}
       />
 
-      {/* ── All Products — circular reveal from "View All" button ── */}
       <AllProductsScreen
         visible={allProductsVisible}
         origin={viewAllOrigin}

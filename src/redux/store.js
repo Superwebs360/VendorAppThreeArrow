@@ -1,6 +1,8 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "./authSlice";
 import categoryReducer from "./categorySlice";
+import notificationReducer from "./notificationSlice";
+import orderReducer from "./orderSlice";
 import productReducer from "./productSlice";
 import shippingSettingsReducer from "./shippingsettingSlice";
 import vendorInfoReducer from "./vendorInfoSlice";
@@ -16,5 +18,7 @@ export const store = configureStore({
     shippingSettings: shippingSettingsReducer,
     product: productReducer,
     category: categoryReducer,
+    orders: orderReducer,
+    notifications: notificationReducer,
   },
 });
