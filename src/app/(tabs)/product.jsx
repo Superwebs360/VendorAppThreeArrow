@@ -125,9 +125,51 @@ export default function AddProduct() {
   const [seo, setSeo] = useState(EMPTY_SEO);
   const [errors, setErrors] = useState({});
 
+  // ── Check if the form has any user-entered data ──
+  const hasFormData = useCallback(() => {
+    const hasImages = images.length > 0;
+    const hasBasic =
+      basic.name.trim() !== "" ||
+      basic.brand.trim() !== "" ||
+      basic.sku.trim() !== "" ||
+      basic.shortDescription.trim() !== "" ||
+      basic.description.trim() !== "";
+    const hasCategory = category.category !== "" || category.subCategory !== "";
+    const hasPricing =
+      pricing.mrp !== "" || pricing.price !== "" || pricing.costPrice !== "";
+    const hasInventory = inventory.stock !== "";
+    const hasVariants = variants.length > 0;
+    const hasTags = tags.length > 0;
+    const hasCustomFields = customFields.length > 0;
+    const hasSeo =
+      seo.metaTitle.trim() !== "" ||
+      seo.metaDescription.trim() !== "" ||
+      seo.keywords.trim() !== "";
+
+    return (
+      hasImages ||
+      hasBasic ||
+      hasCategory ||
+      hasPricing ||
+      hasInventory ||
+      hasVariants ||
+      hasTags ||
+      hasCustomFields ||
+      hasSeo
+    );
+  }, [
+    images,
+    basic,
+    category,
+    pricing,
+    inventory,
+    variants,
+    tags,
+    customFields,
+    seo,
+  ]);
+
   // Resets the whole form back to a blank "Add Product" state.
-  // Used after a successful create so the vendor can add another product
-  // without the previous one's data lingering in the fields.
   const resetForm = useCallback(() => {
     setImages([]);
     setBasic(EMPTY_BASIC);
@@ -143,12 +185,48 @@ export default function AddProduct() {
     dispatch(resetSubCategories());
   }, [dispatch]);
 
+  // ── "New Product" button handler ──
+  // If the form already has data, warn the user first.
+  // Give them three choices: save current product, discard & start fresh, or cancel.
+  const handleNewProduct = useCallback(() => {
+    if (!hasFormData()) {
+      // Form is already blank — nothing to warn about
+      resetForm();
+      return;
+    }
+
+    Alert.alert(
+      "Unsaved Product",
+      "You have unsaved data in this form. What would you like to do?",
+      [
+        {
+          text: "Save Product",
+          onPress: () => {
+            // Trigger the normal submit flow, which will reset the form on success
+            handleSubmit();
+          },
+        },
+        {
+          text: "Discard & New",
+          style: "destructive",
+          onPress: () => resetForm(),
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+      ],
+    );
+  }, [hasFormData, resetForm]);
+
   useEffect(() => {
     if (category.category) {
       dispatch(
-        fetchSubCategories({ categoryId: category.category, token: authToken }),
+        fetchSubCategories({
+          categoryId: category.category,
+          token: authToken,
+        }),
       );
-      setCategory((prev) => ({ ...prev, subCategory: "" }));
     } else {
       dispatch(resetSubCategories());
     }
@@ -209,9 +287,6 @@ export default function AddProduct() {
   }, [currentProduct, isEditMode]);
 
   // Handle success/error from Redux.
-  // On a successful CREATE, reset every field so the form is blank and
-  // ready for the next product. On a successful UPDATE, just go back —
-  // there's no "next" product to prep for on an edit screen.
   useEffect(() => {
     if (createSuccess) {
       Alert.alert("✓ Success", "Product created successfully!", [
@@ -238,6 +313,7 @@ export default function AddProduct() {
           text: "OK",
           onPress: () => {
             dispatch(clearSuccess());
+            resetForm();
             router.back();
           },
         },
@@ -378,6 +454,7 @@ export default function AddProduct() {
           >
             <Ionicons name="chevron-back" size={20} color={colors.text} />
           </TouchableOpacity>
+
           <View style={{ flex: 1 }}>
             <Text style={[styles.headerTitle, { color: colors.text }]}>
               {isEditMode ? "Edit Product" : "Add Product"}
@@ -388,6 +465,28 @@ export default function AddProduct() {
                 : "Fill in the details below"}
             </Text>
           </View>
+
+          {/* ── New Product button — only shown on Add (not Edit) screen ── */}
+          {!isEditMode && (
+            <TouchableOpacity
+              onPress={handleNewProduct}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={[
+                styles.newProductBtn,
+                {
+                  backgroundColor: colors.secondary + "15",
+                  borderColor: colors.secondary + "40",
+                },
+              ]}
+            >
+              <Ionicons name="add" size={15} color={colors.secondary} />
+              <Text
+                style={[styles.newProductText, { color: colors.secondary }]}
+              >
+                New
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <ScrollView
@@ -813,6 +912,22 @@ const styles = StyleSheet.create({
   },
   headerTitle: { ...Typography.heading3, fontWeight: "700" },
   headerSub: { fontSize: 12, marginTop: 1 },
+
+  // ── New Product button ──
+  newProductBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  newProductText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+
   scrollContent: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 120 },
   sectionNote: { fontSize: 12, lineHeight: 17, marginBottom: 2 },
   fieldError: { fontSize: 11, marginTop: 4, fontWeight: "500" },

@@ -8,22 +8,29 @@ import { ScrollView, StatusBar, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SPACING } from "../../constants/gridConfig";
 import { useTheme } from "../../constants/theme";
+import AllProductsScreen from "../Screens/Product";
 
 // ── Import the same NotificationOverlay used in OrderScreen ─────────────────
-
 export default function Dashboard() {
   const { colors, isDark } = useTheme();
 
-  // Notification overlay state — lives here so the overlay can cover
-  // the entire screen (SafeAreaView + ScrollView + Header).
+  // Notification overlay
   const [notifVisible, setNotifVisible] = useState(false);
   const [notifOrigin, setNotifOrigin] = useState(null);
 
-  // Called by DashboardHeader when bell is pressed.
-  // `origin` = { x, y } centre of the bell button on screen.
+  // All Products screen — origin is the {x, y} of the "View All" button
+  const [allProductsVisible, setAllProductsVisible] = useState(false);
+  const [viewAllOrigin, setViewAllOrigin] = useState(null);
+
   const handleBellPress = (origin) => {
     setNotifOrigin(origin);
     setNotifVisible(true);
+  };
+
+  // Called by RecentProducts with the measured position of "View All"
+  const handleViewAll = (origin) => {
+    setViewAllOrigin(origin);
+    setAllProductsVisible(true);
   };
 
   return (
@@ -36,8 +43,6 @@ export default function Dashboard() {
         backgroundColor={colors.background}
       />
 
-      {/* Sticky header — outside ScrollView so it never scrolls.
-          We pass onBellPress so the header can report the bell's position. */}
       <DashboardHeader onBellPress={handleBellPress} />
 
       <ScrollView
@@ -47,20 +52,24 @@ export default function Dashboard() {
       >
         <StatsCards />
         <View style={styles.section}>
-          <RecentProducts onViewAll={() => {}} />
+          <RecentProducts onViewAll={handleViewAll} />
         </View>
         <StoreInsights />
       </ScrollView>
 
-      {/* ── Notification overlay ─────────────────────────────────────────────
-          Rendered OUTSIDE the ScrollView and AFTER everything else so it
-          sits on top of the entire screen (zIndex 100 handles the rest).   */}
       <NotificationOverlay
         visible={notifVisible}
         origin={notifOrigin}
         onClose={() => setNotifVisible(false)}
         colors={colors}
         isDark={isDark}
+      />
+
+      {/* ── All Products — circular reveal from "View All" button ── */}
+      <AllProductsScreen
+        visible={allProductsVisible}
+        origin={viewAllOrigin}
+        onClose={() => setAllProductsVisible(false)}
       />
     </SafeAreaView>
   );

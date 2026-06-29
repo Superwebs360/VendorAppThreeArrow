@@ -25,13 +25,13 @@ export default function FloatingTabBar({
         color={focused ? GREEN : INACTIVE}
       />
     ),
-    category: (focused) => (
-      <MaterialIcons
-        name="category"
-        size={24}
-        color={focused ? GREEN : INACTIVE}
-      />
-    ),
+    // category: (focused) => (
+    //   <MaterialIcons
+    //     name="category"
+    //     size={24}
+    //     color={focused ? GREEN : INACTIVE}
+    //   />
+    // ),
 
     product: (focused) => (
       <Ionicons name="cube" size={24} color={focused ? GREEN : INACTIVE} />
