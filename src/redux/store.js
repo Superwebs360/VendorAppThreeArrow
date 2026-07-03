@@ -1,13 +1,14 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "./authSlice";
 import categoryReducer from "./categorySlice";
-import notificationReducer from "./notificationSlice";
+import insightsReducer from "./insightsSlice";
 import orderReducer from "./orderSlice";
 import productReducer from "./productSlice";
 import shippingSettingsReducer from "./shippingsettingSlice";
 import vendorInfoReducer from "./vendorInfoSlice";
-import vendorUpdateReducer from "./vendorUpdateSlice";
+import vendorPaymentReducer from "./vendorpaymentslice";
 import vendorStoreInformationReducer from "./vendorstoreinformationSlice";
+import vendorUpdateReducer from "./vendorUpdateSlice";
 
 export const store = configureStore({
   reducer: {
@@ -19,6 +20,7 @@ export const store = configureStore({
     product: productReducer,
     category: categoryReducer,
     orders: orderReducer,
-    notifications: notificationReducer,
+    insights: insightsReducer,
+    vendorPayment: vendorPaymentReducer,
   },
 });

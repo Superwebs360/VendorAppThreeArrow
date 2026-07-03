@@ -32,6 +32,7 @@ import {
   selectStoreSaving,
   updateVendorStoreInformation,
 } from "../../../../../../redux/vendorstoreinformationSlice";
+import { safeBack } from "../../../../../../utils/navigation";
 
 const COUNTRIES = ["India", "United States", "United Kingdom", "Other"];
 
@@ -270,7 +271,7 @@ const StoreAddress = () => {
           [
             {
               text: "OK",
-              onPress: () => router.back(),
+              onPress: () => safeBack(router),
             },
           ],
         );
@@ -1042,7 +1043,7 @@ const Header = ({ colors, typography, router }) => (
     ]}
   >
     <TouchableOpacity
-      onPress={() => router.back()}
+      onPress={() => safeBack(router)}
       style={[
         styles.backBtn,
         { backgroundColor: colors.background, borderColor: colors.border },

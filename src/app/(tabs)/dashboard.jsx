@@ -4,18 +4,26 @@ import StatsCards from "@/component/DashboardComponent/Statscards";
 import StoreInsights from "@/component/DashboardComponent/Storeinsights";
 import NotificationOverlay from "@/component/OrderComponent/NotificationOverlay";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect, useState } from "react";
-import { ScrollView, StatusBar, StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import {
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useStore } from "react-redux";
+import { useDispatch, useStore } from "react-redux";
 import { SPACING } from "../../constants/gridConfig";
 import { useTheme } from "../../constants/theme";
-import VendorSocket from "../../redux/vendorSocket";
+import { fetchVendorOrders } from "../../redux/orderSlice";
+import { getMyProducts } from "../../redux/productSlice";
 import AllProductsScreen from "../Screens/Product";
 
 export default function Dashboard() {
   const { colors, isDark } = useTheme();
   const store = useStore();
+  const dispatch = useDispatch();
 
   // Notification overlay
   const [notifVisible, setNotifVisible] = useState(false);
@@ -24,24 +32,50 @@ export default function Dashboard() {
   // All Products screen
   const [allProductsVisible, setAllProductsVisible] = useState(false);
   const [viewAllOrigin, setViewAllOrigin] = useState(null);
+  const [productsInitialFilters, setProductsInitialFilters] = useState(null);
 
-  // ── Connect socket once on mount ────────────────────────────────────────
-  useEffect(() => {
-    (async () => {
+  // Pull-to-refresh
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadDashboardData = useCallback(async () => {
+    try {
       const token = await AsyncStorage.getItem("vendorToken");
-      if (token) VendorSocket.connect(token, store);
-    })();
+      await Promise.all([
+        dispatch(fetchVendorOrders({ page: 1, limit: 100 })),
+        dispatch(getMyProducts({ token, page: 1, limit: 100 })),
+      ]);
+    } catch {
+      // individual thunk errors already land in their own slice's error state
+    }
+  }, [dispatch]);
 
-    return () => VendorSocket.disconnect();
-  }, []);
+  // Initial load
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadDashboardData();
+    setRefreshing(false);
+  }, [loadDashboardData]);
 
   const handleBellPress = (origin) => {
     setNotifOrigin(origin);
     setNotifVisible(true);
   };
 
+  // RecentProducts "View All" -> plain inventory view, no special filter
   const handleViewAll = (origin) => {
     setViewAllOrigin(origin);
+    setProductsInitialFilters(null);
+    setAllProductsVisible(true);
+  };
+
+  // StatsCards "Low Stock" card -> inventory view pre-filtered + sorted
+  const handleOpenProductsWithFilter = (origin, filters) => {
+    setViewAllOrigin(origin);
+    setProductsInitialFilters(filters);
     setAllProductsVisible(true);
   };
 
@@ -62,12 +96,19 @@ export default function Dashboard() {
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.textSecondary}
+          />
+        }
       >
-        <StatsCards />
+        <StoreInsights />
+        <StatsCards onOpenProducts={handleOpenProductsWithFilter} />
         <View style={styles.section}>
           <RecentProducts onViewAll={handleViewAll} />
         </View>
-        <StoreInsights />
       </ScrollView>
 
       <NotificationOverlay
@@ -82,6 +123,7 @@ export default function Dashboard() {
         visible={allProductsVisible}
         origin={viewAllOrigin}
         onClose={() => setAllProductsVisible(false)}
+        initialFilters={productsInitialFilters}
       />
     </SafeAreaView>
   );

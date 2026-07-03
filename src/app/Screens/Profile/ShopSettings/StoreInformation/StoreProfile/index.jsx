@@ -30,6 +30,7 @@ import {
   selectStoreLoading,
   updateVendorStoreInformation,
 } from "../../../../../../redux/vendorstoreinformationSlice";
+import { safeBack } from "../../../../../../utils/navigation";
 
 const CATEGORIES = [
   "Grocery",
@@ -162,7 +163,7 @@ const StoreProfile = () => {
 
       if (isSuccess) {
         Alert.alert("Saved", "Store profile updated successfully.", [
-          { text: "OK", onPress: () => router.back() },
+          { text: "OK", onPress: () => safeBack(router) },
         ]);
       } else {
         Alert.alert("Error", result.payload || "Failed to save store profile.");
@@ -191,7 +192,7 @@ const StoreProfile = () => {
           ]}
         >
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => safeBack(router)}
             style={[
               styles.backBtn,
               {
@@ -237,7 +238,7 @@ const StoreProfile = () => {
         ]}
       >
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => safeBack(router)}
           style={[
             styles.backBtn,
             { backgroundColor: colors.background, borderColor: colors.border },

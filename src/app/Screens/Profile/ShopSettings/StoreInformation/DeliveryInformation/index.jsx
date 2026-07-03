@@ -31,6 +31,7 @@ import {
   selectStoreSaving,
   updateVendorStoreInformation,
 } from "../../../../../../redux/vendorstoreinformationSlice";
+import { safeBack } from "../../../../../../utils/navigation";
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
 
@@ -195,7 +196,7 @@ const DeliveryInformation = () => {
 
       if (isSuccess) {
         Alert.alert("Saved", "Delivery information updated successfully.", [
-          { text: "OK", onPress: () => router.back() },
+          { text: "OK", onPress: () => safeBack(router) },
         ]);
       } else {
         Alert.alert(
@@ -508,7 +509,7 @@ const Header = ({ colors, typography, router }) => (
     ]}
   >
     <TouchableOpacity
-      onPress={() => router.back()}
+      onPress={() => safeBack(router)}
       style={[
         styles.backBtn,
         { backgroundColor: colors.background, borderColor: colors.border },

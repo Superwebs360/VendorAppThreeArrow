@@ -21,15 +21,6 @@ export default function TabsLayout() {
             }}
           />
         </NativeTabs.Trigger>
-        {/* <NativeTabs.Trigger name="category">
-          <NativeTabs.Trigger.Label>Category</NativeTabs.Trigger.Label>
-          <NativeTabs.Trigger.Icon
-            sf={{
-              default: "square.grid.2x2",
-              selected: "square.grid.2x2.fill",
-            }}
-          />
-        </NativeTabs.Trigger> */}
         <NativeTabs.Trigger name="product">
           <NativeTabs.Trigger.Label>Product</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon
@@ -58,7 +49,6 @@ export default function TabsLayout() {
       screenOptions={{ headerShown: false, gestureEnabled: false }}
     >
       <Tabs.Screen name="dashboard" options={{ title: "Dashboard" }} />
-      {/* <Tabs.Screen name="category" options={{ title: "Category" }} /> */}
       <Tabs.Screen name="product" options={{ title: "Product" }} />
       <Tabs.Screen name="order" options={{ title: "Orders" }} />
       <Tabs.Screen name="profile" options={{ title: "Profile" }} />

@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
+import { safeBack } from "../../utils/navigation";
 
 import {
   selectRestoring,
@@ -303,7 +304,7 @@ export default function AddProduct() {
           onPress: () => {
             dispatch(clearSuccess());
             resetForm();
-            router.back();
+            safeBack(router);
           },
         },
       ]);
@@ -314,7 +315,7 @@ export default function AddProduct() {
           onPress: () => {
             dispatch(clearSuccess());
             resetForm();
-            router.back();
+            safeBack(router);
           },
         },
       ]);
@@ -445,7 +446,7 @@ export default function AddProduct() {
       >
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => safeBack(router)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             style={[
               styles.backBtn,

@@ -17,6 +17,7 @@ import {
   View,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
+import { safeBack } from "../../../../utils/navigation";
 
 import {
   fetchMyVendorProfile,
@@ -305,7 +306,7 @@ const VendorEditProfile = () => {
         ]}
       >
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => safeBack(router)}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           style={[
             styles.backBtn,

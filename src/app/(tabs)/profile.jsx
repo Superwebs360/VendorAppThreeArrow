@@ -250,6 +250,9 @@ export default function ProfileScreen() {
             colors={colors}
           />
           <SettingRow
+            onPress={() =>
+              router.push("/Screens/Profile/ShopSettings/PaymentMethods")
+            }
             icon={
               <Feather name="credit-card" size={16} color={colors.secondary} />
             }

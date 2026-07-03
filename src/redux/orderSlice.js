@@ -1,5 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import {
+  createAsyncThunk,
+  createSelector,
+  createSlice,
+} from "@reduxjs/toolkit";
 import axios from "axios";
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -242,10 +246,15 @@ export const selectOrdersLoading = (state) => state.orders.loading;
 export const selectOrdersUpdating = (state) => state.orders.updating;
 export const selectOrdersError = (state) => state.orders.error;
 
-/** Derived selector — applies local filters over raw orders */
-export const selectFilteredOrders = (state) => {
-  const { orders, filters } = state.orders;
-  return filterOrdersLocally(orders, filters);
-};
+/**
+ * Derived selector — applies local filters over raw orders.
+ * Memoized with createSelector so it only recomputes (and only returns
+ * a new array reference) when `orders` or `filters` actually change,
+ * instead of on every store update / component render.
+ */
+export const selectFilteredOrders = createSelector(
+  [selectRawOrders, selectFilters],
+  (orders, filters) => filterOrdersLocally(orders, filters),
+);
 
 export default orderSlice.reducer;

@@ -1,10 +1,5 @@
-/**
- * OrderScreen.jsx - UPDATED WITH SOCKET INITIALIZATION LOGGING
- * Add this useEffect to initialize the socket connection
- */
-
 import { Feather } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -21,7 +16,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { Radii, Shadows, useTheme } from "../../constants/theme";
-import VendorSocket from "../../redux/vendorSocket"; // ← ADD THIS IMPORT
 
 import NotificationOverlay from "@/component/OrderComponent/NotificationOverlay";
 import SearchBar, {
@@ -62,41 +56,58 @@ const VENDOR_STATUS_OPTIONS = [
 
 const STATUS_STYLES = {
   pending: {
-    bg: { light: "#FEF3C7", dark: "rgba(217,119,6,0.12)" },
+    bg: { light: "#FEF3C7", dark: "rgba(217,119,6,0.15)" },
     text: "#D97706",
+    dot: "#D97706",
   },
   confirmed: {
-    bg: { light: "#DBEAFE", dark: "rgba(59,130,246,0.12)" },
+    bg: { light: "#DBEAFE", dark: "rgba(59,130,246,0.15)" },
     text: "#2563EB",
+    dot: "#2563EB",
   },
   processing: {
-    bg: { light: "#EDE9FE", dark: "rgba(124,58,237,0.12)" },
+    bg: { light: "#EDE9FE", dark: "rgba(124,58,237,0.15)" },
     text: "#7C3AED",
+    dot: "#7C3AED",
   },
   shipped: {
-    bg: { light: "#E9EDFB", dark: "rgba(84,112,224,0.12)" },
+    bg: { light: "#E9EDFB", dark: "rgba(84,112,224,0.15)" },
     text: "#5470E0",
+    dot: "#5470E0",
   },
   delivered: {
-    bg: { light: "#E3F5EA", dark: "rgba(47,158,90,0.12)" },
+    bg: { light: "#E3F5EA", dark: "rgba(47,158,90,0.15)" },
     text: "#2F9E5A",
+    dot: "#2F9E5A",
   },
   cancelled: {
-    bg: { light: "#FBE7E7", dark: "rgba(224,84,79,0.12)" },
+    bg: { light: "#FBE7E7", dark: "rgba(224,84,79,0.15)" },
     text: "#E0544F",
+    dot: "#E0544F",
   },
   refunded: {
-    bg: { light: "#F3F4F6", dark: "rgba(107,114,128,0.12)" },
+    bg: { light: "#F3F4F6", dark: "rgba(107,114,128,0.15)" },
     text: "#6B7280",
+    dot: "#6B7280",
   },
 };
-
-const COL = { id: 105, customer: 175, date: 110, status: 115, total: 90 };
 
 const DATE_RANGES = [
   { label: "All Time", value: "all" },
   { label: "Last 30 Days", value: "last30" },
 ];
+
+const GRADIENTS = {
+  brand: ["#5DB64A", "#5BB74A"],
+  pending: ["#F59E0B", "#D97706"],
+  confirmed: ["#3B82F6", "#2563EB"],
+  processing: ["#8B5CF6", "#7C3AED"],
+  shipped: ["#6B82E8", "#5470E0"],
+  delivered: ["#34D399", "#2F9E5A"],
+  cancelled: ["#F87171", "#E0544F"],
+  refunded: ["#9CA3AF", "#6B7280"],
+  avatar: ["#34C759", "#5BB74A"],
+};
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 const formatDate = (iso) => {
@@ -125,6 +136,7 @@ function StatusBadge({ status, isDark }) {
         { backgroundColor: isDark ? s.bg.dark : s.bg.light },
       ]}
     >
+      <View style={[styles.badgeDot, { backgroundColor: s.dot }]} />
       <Text style={[styles.badgeText, { color: s.text }]} numberOfLines={1}>
         {capitalize(status)}
       </Text>
@@ -132,7 +144,7 @@ function StatusBadge({ status, isDark }) {
   );
 }
 
-function Avatar({ user, isDark }) {
+function Avatar({ user, size = 40 }) {
   const name = user?.name || "?";
   const initials = name
     .split(" ")
@@ -140,12 +152,18 @@ function Avatar({ user, isDark }) {
     .slice(0, 2)
     .join("")
     .toUpperCase();
-  const bgFill = isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6";
-  const labelColor = isDark ? "#A3A3A3" : "rgba(0,0,0,0.6)";
   return (
-    <View style={[styles.avatarCircle, { backgroundColor: bgFill }]}>
-      <Text style={[styles.avatarText, { color: labelColor }]}>{initials}</Text>
-    </View>
+    <LinearGradient
+      colors={GRADIENTS.avatar}
+      style={[
+        styles.avatarCircle,
+        { width: size, height: size, borderRadius: size / 2 },
+      ]}
+    >
+      <Text style={[styles.avatarText, { fontSize: size * 0.34 }]}>
+        {initials}
+      </Text>
+    </LinearGradient>
   );
 }
 
@@ -210,17 +228,26 @@ function FilterModal({ visible, onClose, filters, dispatch, colors, isDark }) {
         <Pressable
           style={[
             styles.modalSheet,
-            { backgroundColor: isDark ? "#1E2022" : "#fff" },
+            Shadows.lg,
+            { backgroundColor: isDark ? "#1C1D21" : "#fff" },
           ]}
           onPress={(e) => e.stopPropagation()}
         >
-          <View style={styles.modalHandle} />
+          <View
+            style={[
+              styles.modalHandle,
+              {
+                backgroundColor: isDark
+                  ? "rgba(255,255,255,0.18)"
+                  : "rgba(0,0,0,0.15)",
+              },
+            ]}
+          />
 
           <Text style={[styles.modalTitle, { color: colors.text }]}>
             Filter Orders
           </Text>
 
-          {/* Status */}
           <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>
             STATUS
           </Text>
@@ -232,7 +259,6 @@ function FilterModal({ visible, onClose, filters, dispatch, colors, isDark }) {
             )}
           </View>
 
-          {/* Date Range */}
           <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>
             DATE RANGE
           </Text>
@@ -244,13 +270,12 @@ function FilterModal({ visible, onClose, filters, dispatch, colors, isDark }) {
             )}
           </View>
 
-          {/* Buttons */}
           <View style={styles.modalBtns}>
             <Pressable
               onPress={reset}
               style={[
                 styles.modalBtn,
-                { borderColor: colors.border, borderWidth: 1 },
+                { borderColor: colors.border, borderWidth: 1.5 },
               ]}
             >
               <Text
@@ -259,16 +284,15 @@ function FilterModal({ visible, onClose, filters, dispatch, colors, isDark }) {
                 Reset
               </Text>
             </Pressable>
-            <Pressable
-              onPress={apply}
-              style={[
-                styles.modalBtn,
-                { backgroundColor: colors.primary || "#5470E0" },
-              ]}
-            >
-              <Text style={[styles.modalBtnText, { color: "#fff" }]}>
-                Apply Filters
-              </Text>
+            <Pressable onPress={apply} style={styles.modalBtnGradientWrap}>
+              <LinearGradient
+                colors={GRADIENTS.brand}
+                style={styles.modalBtnGradient}
+              >
+                <Text style={[styles.modalBtnText, { color: "#fff" }]}>
+                  Apply Filters
+                </Text>
+              </LinearGradient>
             </Pressable>
           </View>
         </Pressable>
@@ -314,17 +338,35 @@ function StatusUpdateModal({
         <Pressable
           style={[
             styles.modalSheet,
-            { backgroundColor: isDark ? "#1E2022" : "#fff" },
+            Shadows.lg,
+            { backgroundColor: isDark ? "#1C1D21" : "#fff" },
           ]}
           onPress={(e) => e.stopPropagation()}
         >
-          <View style={styles.modalHandle} />
-          <Text style={[styles.modalTitle, { color: colors.text }]}>
-            Update Status
-          </Text>
-          <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>
-            Order {formatOrderId(order?._id)}
-          </Text>
+          <View
+            style={[
+              styles.modalHandle,
+              {
+                backgroundColor: isDark
+                  ? "rgba(255,255,255,0.18)"
+                  : "rgba(0,0,0,0.15)",
+              },
+            ]}
+          />
+          <View style={styles.modalHeaderRow}>
+            <Avatar user={order?.user} size={36} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                Update Status
+              </Text>
+              <Text
+                style={[styles.modalSubtext, { color: colors.textSecondary }]}
+              >
+                Order {formatOrderId(order?._id)} ·{" "}
+                {order?.user?.name || "Customer"}
+              </Text>
+            </View>
+          </View>
 
           <View style={styles.chipRow}>
             {VENDOR_STATUS_OPTIONS.map((s) => {
@@ -345,10 +387,13 @@ function StatusUpdateModal({
                           ? "rgba(255,255,255,0.06)"
                           : "#F3F4F6",
                       borderColor: active ? st.text : colors.border,
-                      borderWidth: 1,
+                      borderWidth: active ? 1.5 : 1,
                     },
                   ]}
                 >
+                  <View
+                    style={[styles.badgeDot, { backgroundColor: st.dot }]}
+                  />
                   <Text
                     style={[
                       styles.chipText,
@@ -370,7 +415,7 @@ function StatusUpdateModal({
               onPress={onClose}
               style={[
                 styles.modalBtn,
-                { borderColor: colors.border, borderWidth: 1 },
+                { borderColor: colors.border, borderWidth: 1.5 },
               ]}
             >
               <Text
@@ -382,21 +427,23 @@ function StatusUpdateModal({
             <Pressable
               onPress={handleUpdate}
               disabled={updating}
-              style={[
-                styles.modalBtn,
-                {
-                  backgroundColor: colors.primary || "#5470E0",
-                  opacity: updating ? 0.7 : 1,
-                },
-              ]}
+              style={styles.modalBtnGradientWrap}
             >
-              {updating ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={[styles.modalBtnText, { color: "#fff" }]}>
-                  Update
-                </Text>
-              )}
+              <LinearGradient
+                colors={GRADIENTS[selected] || GRADIENTS.brand}
+                style={[
+                  styles.modalBtnGradient,
+                  { opacity: updating ? 0.7 : 1 },
+                ]}
+              >
+                {updating ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={[styles.modalBtnText, { color: "#fff" }]}>
+                    Update
+                  </Text>
+                )}
+              </LinearGradient>
             </Pressable>
           </View>
         </Pressable>
@@ -406,31 +453,96 @@ function StatusUpdateModal({
 }
 
 /* ─── Empty State ────────────────────────────────────────────────────────── */
-function EmptyState({ filters, colors, onReset }) {
+function EmptyState({ filters, colors, isDark, onReset }) {
   const hasFilters =
     filters.status !== "all" || filters.search || filters.dateRange !== "all";
   return (
     <View style={styles.emptyWrap}>
-      <Feather name="inbox" size={44} color={colors.textMuted} />
+      <View
+        style={[
+          styles.emptyIconWrap,
+          { backgroundColor: isDark ? "rgba(84,112,224,0.12)" : "#E9EDFB" },
+        ]}
+      >
+        <Feather name="inbox" size={32} color="#5470E0" />
+      </View>
       <Text style={[styles.emptyTitle, { color: colors.text }]}>
         {hasFilters ? "No matching orders" : "No orders yet"}
       </Text>
       <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
         {hasFilters
-          ? "Try adjusting your filters."
-          : "Orders from customers will appear here."}
+          ? "Try adjusting your filters to see more results."
+          : "Orders from customers will appear here as they come in."}
       </Text>
       {hasFilters && (
         <Pressable
           onPress={onReset}
           style={[styles.resetBtn, { borderColor: colors.border }]}
         >
+          <Feather name="rotate-ccw" size={13} color={colors.textSecondary} />
           <Text style={[styles.resetBtnText, { color: colors.textSecondary }]}>
             Clear Filters
           </Text>
         </Pressable>
       )}
     </View>
+  );
+}
+
+/* ─── Order Card Row ─────────────────────────────────────────────────────── */
+function OrderCard({ order, colors, isDark, onPress }) {
+  const amount = order.vendorSubtotal || order.total || 0;
+  return (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={onPress}
+      style={[
+        styles.orderCard,
+        !isDark && Shadows.sm,
+        {
+          backgroundColor: isDark ? "#1C1D21" : "#fff",
+          borderColor: colors.border,
+        },
+      ]}
+    >
+      <Avatar user={order.user} />
+
+      <View style={styles.orderCardBody}>
+        <View style={styles.orderCardTopRow}>
+          <Text
+            style={[styles.customerName, { color: colors.text }]}
+            numberOfLines={1}
+          >
+            {order.user?.name || "Customer"}
+          </Text>
+          <Text style={[styles.totalText, { color: colors.text }]}>
+            ₹{amount.toLocaleString("en-IN")}
+          </Text>
+        </View>
+
+        <View style={styles.orderCardBottomRow}>
+          <View style={styles.orderMetaRow}>
+            <Text style={[styles.orderId, { color: "#5470E0" }]}>
+              {formatOrderId(order._id)}
+            </Text>
+            <View
+              style={[styles.metaDivider, { backgroundColor: colors.divider }]}
+            />
+            <Text style={[styles.dateText, { color: colors.textSecondary }]}>
+              {formatDate(order.createdAt)}
+            </Text>
+          </View>
+          <StatusBadge status={order.status} isDark={isDark} />
+        </View>
+      </View>
+
+      <Feather
+        name="chevron-right"
+        size={16}
+        color={colors.textMuted}
+        style={styles.chevron}
+      />
+    </TouchableOpacity>
   );
 }
 
@@ -461,50 +573,8 @@ export default function OrderScreen() {
 
   /* ── Initial fetch ── */
   useEffect(() => {
-    console.log("[OrderScreen] Component mounted");
     dispatch(fetchVendorOrders({ page: 1, limit: 100 }));
   }, []);
-
-  /* ── SOCKET INITIALIZATION - ADD THIS EFFECT ── */
-  useEffect(() => {
-    console.log("[OrderScreen] useEffect - Socket initialization");
-
-    const initializeSocket = async () => {
-      try {
-        console.log("[OrderScreen] Starting socket initialization...");
-
-        // Retrieve token from AsyncStorage
-        const vendorToken = await AsyncStorage.getItem("vendorToken");
-
-        if (!vendorToken) {
-          console.warn("[OrderScreen] No vendor token found in AsyncStorage");
-          return;
-        }
-
-        console.log("[OrderScreen] Token retrieved:", {
-          hasToken: !!vendorToken,
-          tokenLength: vendorToken.length,
-        });
-
-        // Connect socket
-        console.log("[OrderScreen] Calling VendorSocket.connect()");
-        VendorSocket.connect(vendorToken, dispatch);
-
-        console.log("[OrderScreen] ✅ Socket initialization completed");
-      } catch (err) {
-        console.error("[OrderScreen] Socket initialization error:", err);
-      }
-    };
-
-    initializeSocket();
-
-    // Cleanup on unmount
-    return () => {
-      console.log("[OrderScreen] Component unmounting, cleaning up");
-      // Optionally disconnect socket on unmount
-      // VendorSocket.disconnect();
-    };
-  }, [dispatch]);
 
   /* ── Sync search query to redux filter ── */
   useEffect(() => {
@@ -569,9 +639,9 @@ export default function OrderScreen() {
       {/* ── Top bar ── */}
       <View style={styles.topBar}>
         <View style={styles.brandRow}>
-          <View style={[styles.logoBox, { backgroundColor: colors.secondary }]}>
-            <Feather name="grid" size={22} color={"#ffffff"} />
-          </View>
+          <LinearGradient colors={GRADIENTS.brand} style={styles.logoBox}>
+            <Feather name="grid" size={20} color={"#ffffff"} />
+          </LinearGradient>
           <Text style={[styles.brandText, { color: colors.text }]}>
             Store Manager
           </Text>
@@ -625,14 +695,13 @@ export default function OrderScreen() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.title, { color: colors.text }]}>Orders</Text>
               <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                Manage and track your customer orders in real-time.
+                Manage and track your customer orders.
               </Text>
             </View>
           </View>
 
           {/* Filter + Date range row */}
           <View style={styles.actionsRow}>
-            {/* Filter button */}
             <Pressable
               onPress={() => setFilterVisible(true)}
               style={[
@@ -644,7 +713,7 @@ export default function OrderScreen() {
                         ? "rgba(84,112,224,0.15)"
                         : "#E9EDFB"
                       : isDark
-                        ? "rgba(255,255,255,0.03)"
+                        ? "rgba(255,255,255,0.04)"
                         : colors.inputBg || "#F9FAFB",
                   borderColor:
                     activeFilterCount > 0 ? "#5470E0" : colors.border,
@@ -669,7 +738,6 @@ export default function OrderScreen() {
               </Text>
             </Pressable>
 
-            {/* Date range button */}
             <Pressable
               onPress={() => {
                 dispatch(
@@ -687,7 +755,7 @@ export default function OrderScreen() {
                         ? "rgba(84,112,224,0.15)"
                         : "#E9EDFB"
                       : isDark
-                        ? "rgba(255,255,255,0.03)"
+                        ? "rgba(255,255,255,0.04)"
                         : colors.inputBg || "#F9FAFB",
                   borderColor:
                     filters.dateRange !== "all" ? "#5470E0" : colors.border,
@@ -748,11 +816,11 @@ export default function OrderScreen() {
           <View style={styles.topPagerRow}>
             <Text style={[styles.footerText, { color: colors.textSecondary }]}>
               Showing{" "}
-              <Text style={{ fontWeight: "600", color: colors.text }}>
+              <Text style={{ fontWeight: "700", color: colors.text }}>
                 {orders.length}
               </Text>{" "}
               of{" "}
-              <Text style={{ fontWeight: "600", color: colors.text }}>
+              <Text style={{ fontWeight: "700", color: colors.text }}>
                 {pagination.total}
               </Text>{" "}
               orders
@@ -787,7 +855,7 @@ export default function OrderScreen() {
           </View>
         )}
 
-        {/* ── Table ── */}
+        {/* ── Order list (card-based) ── */}
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={styles.scrollContent}
@@ -813,117 +881,19 @@ export default function OrderScreen() {
             <EmptyState
               filters={filters}
               colors={colors}
+              isDark={isDark}
               onReset={() => dispatch(resetFilters())}
             />
           ) : (
-            <View
-              style={[
-                styles.tableCard,
-                !isDark && Shadows.sm,
-                {
-                  backgroundColor: isDark
-                    ? "#1E2022"
-                    : colors.card || "#FFFFFF",
-                  borderColor: colors.border,
-                },
-              ]}
-            >
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View>
-                  {/* Header */}
-                  <View
-                    style={[
-                      styles.headerRow,
-                      { borderBottomColor: colors.divider },
-                    ]}
-                  >
-                    {["ORDER ID", "CUSTOMER", "DATE", "STATUS", "TOTAL"].map(
-                      (label, i) => (
-                        <Text
-                          key={label}
-                          style={[
-                            styles.colHeader,
-                            {
-                              width: Object.values(COL)[i],
-                              color: colors.textMuted,
-                            },
-                          ]}
-                        >
-                          {label}
-                        </Text>
-                      ),
-                    )}
-                  </View>
-
-                  {/* Rows */}
-                  {orders.map((order, i) => (
-                    <TouchableOpacity
-                      key={order._id}
-                      activeOpacity={0.75}
-                      onPress={() => setStatusModal({ visible: true, order })}
-                      style={[
-                        styles.row,
-                        i !== orders.length - 1 && {
-                          borderBottomWidth: 1,
-                          borderBottomColor: colors.divider,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.orderId,
-                          {
-                            width: COL.id,
-                            color: colors.secondary || "#5470E0",
-                          },
-                        ]}
-                      >
-                        {formatOrderId(order._id)}
-                      </Text>
-
-                      <View
-                        style={[styles.customerCell, { width: COL.customer }]}
-                      >
-                        <Avatar user={order.user} isDark={isDark} />
-                        <Text
-                          style={[styles.customerName, { color: colors.text }]}
-                          numberOfLines={1}
-                        >
-                          {order.user?.name || "Customer"}
-                        </Text>
-                      </View>
-
-                      <Text
-                        style={[
-                          styles.dateText,
-                          { width: COL.date, color: colors.textSecondary },
-                        ]}
-                      >
-                        {formatDate(order.createdAt)}
-                      </Text>
-
-                      <View style={{ width: COL.status }}>
-                        <StatusBadge status={order.status} isDark={isDark} />
-                      </View>
-
-                      <Text
-                        style={[
-                          styles.totalText,
-                          { width: COL.total, color: colors.text },
-                        ]}
-                      >
-                        ₹
-                        {(
-                          order.vendorSubtotal ||
-                          order.total ||
-                          0
-                        ).toLocaleString("en-IN")}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
-            </View>
+            orders.map((order) => (
+              <OrderCard
+                key={order._id}
+                order={order}
+                colors={colors}
+                isDark={isDark}
+                onPress={() => setStatusModal({ visible: true, order })}
+              />
+            ))
           )}
         </ScrollView>
       </Animated.View>
@@ -961,7 +931,6 @@ export default function OrderScreen() {
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-
   topBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -970,37 +939,41 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 14,
   },
-  brandRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  brandRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   logoBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 9,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#5470E0",
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
-  brandText: { fontSize: 26, fontWeight: "800", letterSpacing: -0.2 },
+  brandText: { fontSize: 24, fontWeight: "800", letterSpacing: -0.3 },
   topIcons: { flexDirection: "row", alignItems: "center" },
-
   stickyHeader: {
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 12,
+    paddingBottom: 14,
     gap: 12,
   },
   titleRow: { flexDirection: "row", marginBottom: 2 },
-  title: { fontSize: 24, fontWeight: "800", letterSpacing: -0.4 },
-  subtitle: { fontSize: 13, marginTop: 4, lineHeight: 18, opacity: 0.8 },
+  title: { fontSize: 26, fontWeight: "800", letterSpacing: -0.5 },
+  subtitle: { fontSize: 13, marginTop: 4, lineHeight: 18, opacity: 0.75 },
   actionsRow: { flexDirection: "row", gap: 8 },
   actionBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: Radii.md || 10,
-    borderWidth: 1,
+    paddingVertical: 9,
+    borderRadius: Radii.md || 12,
+    borderWidth: 1.2,
   },
-  actionText: { fontSize: 12, fontWeight: "600" },
+  actionText: { fontSize: 12, fontWeight: "700" },
   activeFilterRow: { flexDirection: "row", gap: 8 },
   activeFilterBadge: {
     flexDirection: "row",
@@ -1010,15 +983,14 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 20,
   },
-  activeFilterText: { fontSize: 12, fontWeight: "600" },
+  activeFilterText: { fontSize: 12, fontWeight: "700" },
   topPagerRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     marginTop: 2,
   },
-  footerText: { fontSize: 12, letterSpacing: -0.1 },
-
+  footerText: { fontSize: 12.5, letterSpacing: -0.1 },
   errorBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -1027,109 +999,128 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: Radii.md || 10,
+    borderRadius: Radii.md || 12,
   },
   errorText: { flex: 1, fontSize: 13 },
   retryText: { fontSize: 13, fontWeight: "700" },
-
-  scrollContent: { paddingHorizontal: 16, paddingBottom: 122, gap: 16 },
-  tableCard: {
-    borderRadius: Radii.lg || 14,
+  scrollContent: { paddingHorizontal: 16, paddingBottom: 130, gap: 10 },
+  orderCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: Radii.lg || 16,
     borderWidth: 1,
-    overflow: "hidden",
   },
-  headerRow: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-  },
-  colHeader: { fontSize: 11, fontWeight: "700", letterSpacing: 0.6 },
-  row: {
+  orderCardBody: { flex: 1, gap: 8 },
+  orderCardTopRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 13,
+    justifyContent: "space-between",
   },
-  orderId: { fontSize: 13, fontWeight: "700", letterSpacing: -0.1 },
-  customerCell: { flexDirection: "row", alignItems: "center", gap: 10 },
-  avatarCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  orderCardBottomRow: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
   },
-  avatarText: { fontSize: 11, fontWeight: "700" },
+  orderMetaRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  metaDivider: { width: 1, height: 10, opacity: 0.6 },
+  chevron: { marginLeft: 2 },
+  orderId: { fontSize: 12.5, fontWeight: "800", letterSpacing: -0.1 },
   customerName: {
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: 14.5,
+    fontWeight: "700",
     flexShrink: 1,
     letterSpacing: -0.1,
   },
-  dateText: { fontSize: 13, opacity: 0.9 },
-  totalText: { fontSize: 13, fontWeight: "700" },
+  dateText: { fontSize: 12.5, opacity: 0.85 },
+  totalText: { fontSize: 14.5, fontWeight: "800", letterSpacing: -0.2 },
   badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
     alignSelf: "flex-start",
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 8,
   },
+  badgeDot: { width: 5, height: 5, borderRadius: 2.5 },
   badgeText: { fontSize: 11, fontWeight: "700" },
-
+  avatarCircle: {
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#5470E0",
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  avatarText: { color: "#fff", fontWeight: "800" },
   loadingWrap: { alignItems: "center", paddingTop: 80, gap: 14 },
   loadingText: { fontSize: 14 },
-
   emptyWrap: {
     alignItems: "center",
-    paddingTop: 80,
+    paddingTop: 70,
     paddingHorizontal: 40,
-    gap: 10,
+    gap: 6,
   },
-  emptyTitle: { fontSize: 18, fontWeight: "700", marginTop: 8 },
+  emptyIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  emptyTitle: { fontSize: 18, fontWeight: "800", marginTop: 4 },
   emptySubtitle: { fontSize: 14, textAlign: "center", lineHeight: 20 },
   resetBtn: {
-    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 12,
     paddingHorizontal: 20,
-    paddingVertical: 9,
-    borderRadius: 10,
-    borderWidth: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1.2,
   },
-  resetBtnText: { fontSize: 13, fontWeight: "600" },
-
-  // Modal
+  resetBtnText: { fontSize: 13, fontWeight: "700" },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
   },
   modalSheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingHorizontal: 20,
-    paddingBottom: 36,
+    paddingBottom: 38,
     paddingTop: 14,
     gap: 14,
   },
   modalHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "rgba(120,120,120,0.3)",
+    width: 42,
+    height: 4.5,
+    borderRadius: 3,
     alignSelf: "center",
-    marginBottom: 6,
+    marginBottom: 4,
   },
-  modalTitle: { fontSize: 18, fontWeight: "800", letterSpacing: -0.3 },
+  modalHeaderRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  modalTitle: { fontSize: 19, fontWeight: "800", letterSpacing: -0.3 },
+  modalSubtext: { fontSize: 12.5, marginTop: 2 },
   filterLabel: {
     fontSize: 11,
-    fontWeight: "700",
+    fontWeight: "800",
     letterSpacing: 0.8,
     marginTop: 4,
   },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
   },
@@ -1139,8 +1130,15 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 13,
-    borderRadius: 12,
+    paddingVertical: 14,
+    borderRadius: 14,
   },
-  modalBtnText: { fontSize: 14, fontWeight: "700" },
+  modalBtnGradientWrap: { flex: 1, borderRadius: 14, overflow: "hidden" },
+  modalBtnGradient: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  modalBtnText: { fontSize: 14.5, fontWeight: "800" },
 });

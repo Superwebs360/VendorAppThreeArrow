@@ -27,6 +27,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { COMPONENT, SPACING } from "../../../../../constants/gridConfig";
 import { useTheme } from "../../../../../constants/theme";
+import { safeBack } from "../../../../../utils/navigation";
 
 // Vendor profile slice (already fetched by VendorEditProfile parent)
 import { selectVendorProfile } from "../../../../../redux/vendorInfoSlice";
@@ -379,7 +380,7 @@ export default function ShippingSettings() {
           ]}
         >
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => safeBack(router)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             style={[
               styles.backBtn,

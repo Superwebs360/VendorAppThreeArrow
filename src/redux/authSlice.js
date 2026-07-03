@@ -4,7 +4,7 @@ import axios from "axios";
 
 // ── Base URL ──────────────────────────────────────────────────────────────────
 // Update this to your actual backend URL or use an env variable
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://192.168.1.17:3000";
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://192.168.1.9:3000";
 const AUTH_BASE = `${BASE_URL}/api/auth/vendor`;
 
 // ── Async Thunks ──────────────────────────────────────────────────────────────

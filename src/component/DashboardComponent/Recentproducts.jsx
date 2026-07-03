@@ -269,7 +269,7 @@ export default function RecentProducts({ onViewAll }) {
 
   const handleEdit = (product) => {
     router.push({
-      pathname: "/(vendor)/AddProduct",
+      pathname: "/(tabs)/product",
       params: { productId: product._id },
     });
   };

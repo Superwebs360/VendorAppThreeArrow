@@ -48,6 +48,7 @@ const DEFAULT_FILTERS = {
   minPrice: "",
   maxPrice: "",
   isActive: "",
+  lowStock: false,
   sortBy: "createdAt",
   sortOrder: "desc",
 };
@@ -55,7 +56,12 @@ const DEFAULT_FILTERS = {
 /**
  * Main products inventory screen with filtering, sorting, and pagination
  */
-export default function AllProductsScreen({ visible, origin, onClose }) {
+export default function AllProductsScreen({
+  visible,
+  origin,
+  onClose,
+  initialFilters,
+}) {
   const { colors, radii, shadows, isDark } = useTheme();
   const router = useRouter();
   const dispatch = useDispatch();
@@ -75,14 +81,20 @@ export default function AllProductsScreen({ visible, origin, onClose }) {
   const [searchText, setSearchText] = useState("");
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState({
+    ...DEFAULT_FILTERS,
+    ...(initialFilters || {}),
+  });
 
   const activeFilterCount = [
     filters.category,
     filters.subCategory,
     filters.minPrice || filters.maxPrice ? "1" : "",
     filters.isActive,
+    filters.lowStock ? "1" : "",
   ].filter(Boolean).length;
+
+  const hasActiveFilters = activeFilterCount > 0;
 
   useEffect(() => {
     if (visible && token && categories.length === 0)
@@ -131,6 +143,8 @@ export default function AllProductsScreen({ visible, origin, onClose }) {
     if (key === "price") {
       updated.minPrice = "";
       updated.maxPrice = "";
+    } else if (key === "lowStock") {
+      updated.lowStock = false;
     } else updated[key] = "";
     if (key === "category") {
       updated.subCategory = "";
@@ -153,14 +167,22 @@ export default function AllProductsScreen({ visible, origin, onClose }) {
     fetchProducts(n);
   };
 
+  // Single source of truth for (re)initializing the screen every time it
+  // becomes visible. Merges DEFAULT_FILTERS with whatever initialFilters was
+  // passed in (e.g. { lowStock: true, sortBy: "stock", sortOrder: "asc" }
+  // from the dashboard's Low Stock card). Do NOT duplicate this effect —
+  // a second effect that unconditionally resets to DEFAULT_FILTERS will
+  // silently clobber initialFilters.
   useEffect(() => {
     if (visible && token) {
       setSearchText("");
-      setFilters(DEFAULT_FILTERS);
+      const startFilters = { ...DEFAULT_FILTERS, ...(initialFilters || {}) };
+      setFilters(startFilters);
       setCurrentPage(1);
-      fetchProducts(1, "", DEFAULT_FILTERS);
+      fetchProducts(1, "", startFilters);
     }
-  }, [visible, token]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, token, initialFilters]);
 
   useEffect(() => {
     if (visible) {
@@ -223,7 +245,6 @@ export default function AllProductsScreen({ visible, origin, onClose }) {
     inputRange: [0, 0.35, 1],
     outputRange: [0, 0, 1],
   });
-  const hasActiveFilters = activeFilterCount > 0;
 
   return (
     <Modal

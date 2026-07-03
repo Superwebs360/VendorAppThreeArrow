@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { safeBack } from "../../../../../utils/navigation";
 
 // ─── Section config ───────────────────────────────────────────────────────────
 // `route` must match the actual folder name under
@@ -129,7 +130,7 @@ const StoreSettingsScreen = () => {
         ]}
       >
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => safeBack(router)}
           style={[
             styles.backBtn,
             { backgroundColor: colors.background, borderColor: colors.border },

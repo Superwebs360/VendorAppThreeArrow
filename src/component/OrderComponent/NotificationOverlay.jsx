@@ -1,9 +1,9 @@
 /**
  * NotificationOverlay.jsx
  * ─────────────────────────────────────────────────────────────
- * Full-screen circular-reveal overlay that shows the vendor's
- * real-time notification feed from Redux.
- * FIXED: Added comprehensive logging throughout
+ * Full-screen circular-reveal overlay that shows a notification
+ * feed. No longer coupled to Redux / notificationSlice — pass
+ * data and handlers in as props.
  */
 
 import { Feather } from "@expo/vector-icons";
@@ -19,15 +19,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useDispatch, useSelector } from "react-redux";
 import { Radii } from "../../constants/theme";
-import {
-  clearAllNotifications,
-  markAllRead,
-  removeNotification,
-  selectNotifications,
-  selectUnreadCount,
-} from "../../redux/notificationSlice";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const MAX_CIRCLE_RADIUS = Math.sqrt(SCREEN_W ** 2 + SCREEN_H ** 2);
@@ -58,63 +50,34 @@ export default function NotificationOverlay({
   onClose,
   colors,
   isDark,
+  notifications = [],
+  onDismiss,
+  onClearAll,
 }) {
-  console.log("[NotificationOverlay] Render:", {
-    visible,
-    isDark,
-    colorsAvailable: !!colors,
-  });
-
-  const dispatch = useDispatch();
-  const notifications = useSelector(selectNotifications);
-  const unreadCount = useSelector(selectUnreadCount);
-
-  useEffect(() => {
-    console.log("[NotificationOverlay] Notifications updated:", {
-      count: notifications.length,
-      unreadCount,
-      notifications: notifications.map((n) => ({
-        id: n.id,
-        type: n.type,
-        title: n.title,
-        read: n.read,
-      })),
-    });
-  }, [notifications, unreadCount]);
-
   const revealAnim = useRef(new Animated.Value(0)).current;
   const contentOpacity = useRef(new Animated.Value(0)).current;
   const [rendered, setRendered] = useState(false);
 
   const animateOpen = () => {
-    console.log("[NotificationOverlay] animateOpen() called");
     setRendered(true);
     revealAnim.setValue(0);
     contentOpacity.setValue(0);
-
-    console.log("[NotificationOverlay] Dispatching markAllRead");
-    dispatch(markAllRead());
 
     Animated.timing(revealAnim, {
       toValue: 1,
       duration: 480,
       useNativeDriver: true,
-    }).start(() => {
-      console.log("[NotificationOverlay] Reveal animation completed");
-    });
+    }).start();
 
     Animated.timing(contentOpacity, {
       toValue: 1,
       duration: 260,
       delay: 200,
       useNativeDriver: true,
-    }).start(() => {
-      console.log("[NotificationOverlay] Content fade-in animation completed");
-    });
+    }).start();
   };
 
   const animateClose = () => {
-    console.log("[NotificationOverlay] animateClose() called");
     Animated.timing(contentOpacity, {
       toValue: 0,
       duration: 120,
@@ -126,7 +89,6 @@ export default function NotificationOverlay({
       duration: 360,
       useNativeDriver: true,
     }).start(() => {
-      console.log("[NotificationOverlay] Animations completed, closing");
       setRendered(false);
       onClose?.();
     });
@@ -135,19 +97,15 @@ export default function NotificationOverlay({
   const prevVisible = useRef(false);
 
   useEffect(() => {
-    console.log("[NotificationOverlay] visible changed:", visible);
     if (visible && !prevVisible.current) {
-      console.log("[NotificationOverlay] Opening...");
       animateOpen();
     } else if (!visible && prevVisible.current && rendered) {
-      console.log("[NotificationOverlay] Closing...");
       animateClose();
     }
     prevVisible.current = visible;
   }, [visible, rendered]);
 
   if (!rendered) {
-    console.log("[NotificationOverlay] Not rendered, returning null");
     return null;
   }
 
@@ -201,12 +159,7 @@ export default function NotificationOverlay({
             <View style={styles.headerActions}>
               {notifications.length > 0 && (
                 <TouchableOpacity
-                  onPress={() => {
-                    console.log(
-                      "[NotificationOverlay] Clear all button pressed",
-                    );
-                    dispatch(clearAllNotifications());
-                  }}
+                  onPress={onClearAll}
                   style={[
                     styles.clearBtn,
                     {
@@ -228,10 +181,7 @@ export default function NotificationOverlay({
               )}
 
               <Pressable
-                onPress={() => {
-                  console.log("[NotificationOverlay] Close button pressed");
-                  animateClose();
-                }}
+                onPress={animateClose}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 style={[
                   styles.closeBtn,
@@ -255,27 +205,15 @@ export default function NotificationOverlay({
             {notifications.length === 0 ? (
               <EmptyState colors={colors} isDark={isDark} />
             ) : (
-              notifications.map((n) => {
-                console.log(
-                  "[NotificationOverlay] Rendering notification:",
-                  n.id,
-                );
-                return (
-                  <NotificationCard
-                    key={n.id}
-                    notification={n}
-                    colors={colors}
-                    isDark={isDark}
-                    onDismiss={() => {
-                      console.log(
-                        "[NotificationOverlay] Dismiss pressed for:",
-                        n.id,
-                      );
-                      dispatch(removeNotification(n.id));
-                    }}
-                  />
-                );
-              })
+              notifications.map((n) => (
+                <NotificationCard
+                  key={n.id}
+                  notification={n}
+                  colors={colors}
+                  isDark={isDark}
+                  onDismiss={() => onDismiss?.(n.id)}
+                />
+              ))
             )}
           </ScrollView>
         </SafeAreaView>
@@ -360,16 +298,10 @@ function EmptyState({ colors }) {
 
 /* ═══════════════════════════════════════════════════════════════════════════
    UNREAD BADGE
+   Now takes `count` as a prop instead of reading from a Redux slice.
 ═══════════════════════════════════════════════════════════════════════════ */
-export function UnreadBadge({ colors }) {
-  const count = useSelector(selectUnreadCount);
-
-  useEffect(() => {
-    console.log("[UnreadBadge] Count updated:", count);
-  }, [count]);
-
+export function UnreadBadge({ colors, count = 0 }) {
   if (!count) {
-    console.log("[UnreadBadge] No unread, returning null");
     return null;
   }
 
