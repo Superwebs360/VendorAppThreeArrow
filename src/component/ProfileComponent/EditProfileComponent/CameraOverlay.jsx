@@ -1,7 +1,6 @@
 import { useTheme } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { CameraView } from "expo-camera";
-import React from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -77,7 +76,7 @@ const styles = StyleSheet.create({
   cameraScreen: { flex: 1 }, // ← FIXED: was "ameraScreen"
   camTopBar: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 56 : 20,
+    top: Platform.OS === "ios" ? 56 : 40,
     left: 0,
     right: 0,
     flexDirection: "row",
@@ -94,7 +93,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   ovalWrap: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
     gap: 20,

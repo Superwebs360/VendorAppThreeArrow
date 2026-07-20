@@ -9,13 +9,21 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Image,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, {
+  FadeInDown,
+  interpolate,
+  LinearTransition,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { safeBack } from "../../../../utils/navigation";
 
@@ -49,24 +57,67 @@ import {
   uploadKycDocument,
 } from "../../../../redux/vendorUpdateSlice";
 
+// Premium Scale Feedback Wrapper Component
+const ScaleTouchable = ({ children, onPress, style, activeOpacity = 0.9 }) => {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const onPressIn = () => {
+    scale.value = withTiming(0.97, { duration: 120 });
+  };
+  const onPressOut = () => {
+    scale.value = withTiming(1, { duration: 150 });
+  };
+
+  return (
+    <TouchableOpacity
+      activeOpacity={activeOpacity}
+      onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      style={[style]}
+    >
+      <Animated.View style={[animatedStyle, styles.flexRowFull]}>
+        {children}
+      </Animated.View>
+    </TouchableOpacity>
+  );
+};
+
 const VendorEditProfile = () => {
   const { colors, typography, shadows } = useTheme();
   const router = useRouter();
   const dispatch = useDispatch();
 
-  // ── Redux state ────────────────────────────────────────────────────────────
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  const animatedHeaderStyle = useAnimatedStyle(() => {
+    const borderOpacity = interpolate(scrollY.value, [0, 40], [0, 1], "clamp");
+    return {
+      borderBottomColor: `rgba(224, 224, 224, ${borderOpacity})`,
+      elevation: interpolate(scrollY.value, [0, 50], [0, 3], "clamp"),
+      shadowOpacity: interpolate(scrollY.value, [0, 50], [0, 0.06], "clamp"),
+    };
+  });
+
   const vendor = useSelector(selectVendorProfile);
   const updateStatus = useSelector(selectUpdateStatus);
   const uploadStatus = useSelector(selectUploadStatus);
   const updateError = useSelector(selectUpdateError);
   const successMessage = useSelector(selectSuccessMessage);
 
-  // ── Modal state ────────────────────────────────────────────────────────────
   const [activeModal, setActiveModal] = useState(null);
   const openModal = (key) => setActiveModal(key);
   const closeModal = () => setActiveModal(null);
 
-  // ── Local form state (mirrors schema) ─────────────────────────────────────
   const [businessDetails, setBusinessDetails] = useState({});
   const [sellerDetails, setSellerDetails] = useState({});
   const [brandDetails, setBrandDetails] = useState({});
@@ -81,7 +132,6 @@ const VendorEditProfile = () => {
     signatureDate: null,
   });
 
-  // ── Camera ─────────────────────────────────────────────────────────────────
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraOpen, setCameraOpen] = useState(false);
   const [facing, setFacing] = useState("front");
@@ -90,7 +140,6 @@ const VendorEditProfile = () => {
 
   const [docUploading, setDocUploading] = useState({});
 
-  // ── Seed local state from Redux vendor on mount / vendor change ────────────
   useEffect(() => {
     if (vendor) {
       setBusinessDetails(vendor.businessDetails || {});
@@ -105,7 +154,6 @@ const VendorEditProfile = () => {
     }
   }, [vendor]);
 
-  // ── Success / error toasts ─────────────────────────────────────────────────
   useEffect(() => {
     if (successMessage) {
       Alert.alert("✓ Saved", successMessage, [{ text: "OK" }]);
@@ -124,11 +172,9 @@ const VendorEditProfile = () => {
     dispatch(fetchMyVendorProfile());
   }, []);
 
-  // ── Field setter factory ───────────────────────────────────────────────────
   const makeSetter = (setter) => (key, val) =>
     setter((prev) => ({ ...prev, [key]: val }));
 
-  // ── Camera handlers ────────────────────────────────────────────────────────
   const openCamera = async () => {
     if (!permission?.granted) {
       const { granted } = await requestPermission();
@@ -145,8 +191,6 @@ const VendorEditProfile = () => {
     setCapturing(true);
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.85 });
-      console.log("[VendorEditProfile] Uploading avatar →", photo.uri);
-
       const formData = new FormData();
       formData.append("avatar", {
         uri: photo.uri,
@@ -154,18 +198,15 @@ const VendorEditProfile = () => {
         name: "avatar.jpg",
       });
 
-      const result = await dispatch(uploadKycAvatar(formData));
-      console.log("[VendorEditProfile] Avatar dispatch result →", result);
+      await dispatch(uploadKycAvatar(formData));
       setCameraOpen(false);
     } catch (error) {
-      console.error("[VendorEditProfile] capturePhoto error →", error);
       Alert.alert("Error", "Could not capture photo. Please try again.");
     } finally {
       setCapturing(false);
     }
   };
 
-  // ── Document picker ────────────────────────────────────────────────────────
   const pickDocument = async (key) => {
     setDocUploading((p) => ({ ...p, [key]: true }));
     try {
@@ -177,29 +218,16 @@ const VendorEditProfile = () => {
       });
 
       if (!result.canceled && result.assets?.[0]) {
-        console.log(
-          `[VendorEditProfile] Uploading doc "${key}" →`,
-          result.assets[0].uri,
-        );
-
         const formData = new FormData();
         formData.append("document", {
           uri: result.assets[0].uri,
           type: "image/jpeg",
           name: `${key}.jpg`,
         });
-        // NOTE: docType is appended inside the thunk to avoid double-append
 
-        const dispatchResult = await dispatch(
-          uploadKycDocument({ formData, docType: key }),
-        );
-        console.log(
-          "[VendorEditProfile] Doc dispatch result →",
-          dispatchResult,
-        );
+        await dispatch(uploadKycDocument({ formData, docType: key }));
       }
     } catch (error) {
-      console.error("[VendorEditProfile] pickDocument error →", error);
       Alert.alert("Error", "Could not pick image. Please try again.");
     } finally {
       setDocUploading((p) => ({ ...p, [key]: false }));
@@ -208,49 +236,28 @@ const VendorEditProfile = () => {
 
   const removeDoc = async (key) => {
     try {
-      const result = await dispatch(removeKycDocument(key));
-      console.log("[VendorEditProfile] removeDoc result →", result);
+      await dispatch(removeKycDocument(key));
     } catch (error) {
       Alert.alert("Error", "Could not remove document.");
     }
   };
 
-  // ── Section save ───────────────────────────────────────────────────────────
   const handleSaveSection = async (sectionKey, sectionData) => {
-    console.log("──────────────────────────────────────");
-    console.log(`[VendorEditProfile] Saving section: "${sectionKey}"`);
-    console.log(
-      "[VendorEditProfile] Payload →",
-      JSON.stringify(sectionData, null, 2),
-    );
-    console.log("──────────────────────────────────────");
-
     const result = await dispatch(
       updateVendorSection({ sectionKey, data: sectionData }),
     );
-
-    console.log("[VendorEditProfile] Dispatch result →", result);
-
-    // Only close modal on success
     if (result.meta.requestStatus === "fulfilled") {
       closeModal();
     }
   };
 
-  // BUG FIX: handleSaveSignature now accepts the NEW value directly
-  // instead of reading digitalSignature state (which hasn't updated yet)
   const handleSaveSignature = async (newValue) => {
-    console.log("[VendorEditProfile] Saving signature →", newValue);
-
     const result = await dispatch(updateVendorSignature(newValue));
-    console.log("[VendorEditProfile] Signature dispatch result →", result);
-
     if (result.meta.requestStatus === "fulfilled") {
       closeModal();
     }
   };
 
-  // ── Summary per section ────────────────────────────────────────────────────
   const getSummary = (key) => {
     switch (key) {
       case "business":
@@ -266,9 +273,7 @@ const VendorEditProfile = () => {
           ? `${shippingLocations.city}, ${shippingLocations.state}`
           : "Not set";
       case "kyc":
-        return kycDetails?.avatarUrl
-          ? "Photo + documents uploaded"
-          : "Incomplete";
+        return kycDetails?.avatarUrl ? "Photo & docs uploaded" : "Incomplete";
       case "signature":
         return digitalSignature.signed
           ? `Signed · ${new Date(digitalSignature.signatureDate).toLocaleDateString()}`
@@ -278,7 +283,6 @@ const VendorEditProfile = () => {
     }
   };
 
-  // ── Camera overlay ─────────────────────────────────────────────────────────
   if (cameraOpen) {
     return (
       <CameraOverlay
@@ -292,17 +296,16 @@ const VendorEditProfile = () => {
     );
   }
 
-  // ── Main screen ────────────────────────────────────────────────────────────
   return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
-      {/* Premium Header */}
-      <View
+    <SafeAreaView
+      style={[styles.root, { backgroundColor: colors.background }]}
+      edges={["top"]}
+    >
+      <Animated.View
         style={[
           styles.header,
-          {
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border,
-          },
+          { backgroundColor: colors.background },
+          animatedHeaderStyle,
         ]}
       >
         <TouchableOpacity
@@ -318,6 +321,7 @@ const VendorEditProfile = () => {
 
         <View style={styles.headerCenter}>
           <Text
+            numberOfLines={1}
             style={[styles.pageTitle, { color: colors.text, ...typography.h3 }]}
           >
             {sellerDetails.sellerName || "Vendor Profile"}
@@ -325,7 +329,7 @@ const VendorEditProfile = () => {
           <View
             style={[
               styles.statusPill,
-              { backgroundColor: colors.secondary + "18" },
+              { backgroundColor: colors.secondary + "12" },
             ]}
           >
             <View
@@ -341,8 +345,8 @@ const VendorEditProfile = () => {
           style={[
             styles.shieldBadge,
             {
-              backgroundColor: colors.secondary + "15",
-              borderColor: colors.secondary + "35",
+              backgroundColor: colors.secondary + "12",
+              borderColor: colors.secondary + "25",
             },
           ]}
         >
@@ -352,67 +356,71 @@ const VendorEditProfile = () => {
             color={colors.secondary}
           />
         </View>
-      </View>
+      </Animated.View>
 
-      <ScrollView
+      <Animated.ScrollView
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >
-        {/* Avatar row */}
-        <TouchableOpacity
-          onPress={() => openModal("kyc")}
-          activeOpacity={0.85}
-          style={[
-            styles.avatarRow,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              ...shadows.sm,
-            },
-          ]}
-        >
-          {kycDetails?.avatarUrl ? (
-            <Image
-              source={{ uri: kycDetails.avatarUrl }}
-              style={[styles.avatarImg, { borderColor: colors.secondary }]}
-            />
-          ) : (
-            <View
-              style={[
-                styles.avatarFallback,
-                { backgroundColor: colors.secondary + "18" },
-              ]}
-            >
-              <Ionicons name="person" size={32} color={colors.secondary} />
-            </View>
-          )}
-          <View style={styles.avatarInfo}>
-            <Text
-              style={[
-                styles.avatarName,
-                { color: colors.text, ...typography.h4 },
-              ]}
-            >
-              {sellerDetails.sellerName || "Your Name"}
-            </Text>
-            <Text
-              style={[
-                styles.avatarBiz,
-                { color: colors.textSecondary, ...typography.caption },
-              ]}
-            >
-              {businessDetails.businessName || "Business name not set"}
-            </Text>
-          </View>
-          <View
-            style={[styles.editBadge, { backgroundColor: colors.secondary }]}
+        <Animated.View entering={FadeInDown.duration(400).delay(100)}>
+          <ScaleTouchable
+            onPress={() => openModal("kyc")}
+            style={[
+              styles.avatarRow,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                ...shadows.sm,
+              },
+            ]}
           >
-            <Ionicons name="camera" size={13} color="#fff" />
-          </View>
-        </TouchableOpacity>
+            {kycDetails?.avatarUrl ? (
+              <Image
+                source={{ uri: kycDetails.avatarUrl }}
+                style={[styles.avatarImg, { borderColor: colors.secondary }]}
+              />
+            ) : (
+              <View
+                style={[
+                  styles.avatarFallback,
+                  { backgroundColor: colors.secondary + "15" },
+                ]}
+              >
+                <Ionicons name="person" size={30} color={colors.secondary} />
+              </View>
+            )}
+            <View style={styles.avatarInfo}>
+              <Text
+                style={[
+                  styles.avatarName,
+                  { color: colors.text, ...typography.h4 },
+                ]}
+              >
+                {sellerDetails.sellerName || "Your Name"}
+              </Text>
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.avatarBiz,
+                  { color: colors.textSecondary, ...typography.caption },
+                ]}
+              >
+                {businessDetails.businessName || "Business name not set"}
+              </Text>
+            </View>
+            <View
+              style={[styles.editBadge, { backgroundColor: colors.secondary }]}
+            >
+              <Ionicons name="camera" size={13} color="#fff" />
+            </View>
+          </ScaleTouchable>
+        </Animated.View>
 
-        {/* Sections */}
-        <View
+        <Animated.View
+          entering={FadeInDown.duration(400).delay(200)}
+          layout={LinearTransition.springify().damping(22)}
           style={[
             styles.sectionCard,
             {
@@ -424,15 +432,14 @@ const VendorEditProfile = () => {
         >
           {SECTIONS.map((s, i) => (
             <React.Fragment key={s.key}>
-              <TouchableOpacity
+              <ScaleTouchable
                 onPress={() => openModal(s.key)}
-                activeOpacity={0.7}
                 style={styles.sectionRow}
               >
                 <View
                   style={[
                     styles.sectionIconWrap,
-                    { backgroundColor: colors.secondary + "15" },
+                    { backgroundColor: colors.secondary + "12" },
                   ]}
                 >
                   <Ionicons name={s.icon} size={18} color={colors.secondary} />
@@ -447,6 +454,7 @@ const VendorEditProfile = () => {
                     {s.label}
                   </Text>
                   <Text
+                    numberOfLines={1}
                     style={[
                       styles.sectionSummary,
                       { color: colors.textSecondary, ...typography.caption },
@@ -459,8 +467,9 @@ const VendorEditProfile = () => {
                   name="chevron-forward"
                   size={16}
                   color={colors.textSecondary}
+                  style={styles.chevronRight}
                 />
-              </TouchableOpacity>
+              </ScaleTouchable>
               {i < SECTIONS.length - 1 && (
                 <View
                   style={[styles.divider, { backgroundColor: colors.border }]}
@@ -468,10 +477,8 @@ const VendorEditProfile = () => {
               )}
             </React.Fragment>
           ))}
-        </View>
-      </ScrollView>
-
-      {/* ── Modals ── */}
+        </Animated.View>
+      </Animated.ScrollView>
 
       <FieldModal
         visible={activeModal === "business"}
@@ -484,7 +491,6 @@ const VendorEditProfile = () => {
         onSave={() => handleSaveSection("business", businessDetails)}
         isSaving={updateStatus === "loading"}
       />
-
       <FieldModal
         visible={activeModal === "seller"}
         onClose={closeModal}
@@ -496,7 +502,6 @@ const VendorEditProfile = () => {
         onSave={() => handleSaveSection("seller", sellerDetails)}
         isSaving={updateStatus === "loading"}
       />
-
       <FieldModal
         visible={activeModal === "brand"}
         onClose={closeModal}
@@ -508,7 +513,6 @@ const VendorEditProfile = () => {
         onSave={() => handleSaveSection("brand", brandDetails)}
         isSaving={updateStatus === "loading"}
       />
-
       <FieldModal
         visible={activeModal === "bank"}
         onClose={closeModal}
@@ -521,7 +525,6 @@ const VendorEditProfile = () => {
         warning="Your bank details are encrypted and stored securely."
         isSaving={updateStatus === "loading"}
       />
-
       <FieldModal
         visible={activeModal === "shipping"}
         onClose={closeModal}
@@ -533,7 +536,6 @@ const VendorEditProfile = () => {
         onSave={() => handleSaveSection("shipping", shippingLocations)}
         isSaving={updateStatus === "loading"}
       />
-
       <KycModal
         visible={activeModal === "kyc"}
         onClose={closeModal}
@@ -547,36 +549,34 @@ const VendorEditProfile = () => {
         onPickDoc={pickDocument}
         onRemoveDoc={removeDoc}
       />
-
-      {/* BUG FIX: pass newValue into handleSaveSignature directly
-          (don't call handleSaveSignature() with no args — digitalSignature
-          state hasn't updated yet when onChange fires) */}
       <SignatureModal
         visible={activeModal === "signature"}
         onClose={closeModal}
         value={digitalSignature}
         onChange={(newValue) => {
           setDigitalSignature(newValue);
-          handleSaveSignature(newValue); // ← pass newValue, not stale state
+          handleSaveSignature(newValue);
         }}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
-export default VendorEditProfile;
-
 const styles = StyleSheet.create({
   root: { flex: 1 },
-
+  flexRowFull: { flexDirection: "row", alignItems: "center", flex: 1 },
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === "ios" ? 56 : 20,
+    paddingTop: 12,
     paddingBottom: 14,
     borderBottomWidth: 1,
     gap: 12,
+    zIndex: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
   },
   backBtn: {
     width: 38,
@@ -586,7 +586,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  headerCenter: { flex: 1, alignItems: "center", gap: 4 },
+  headerCenter: { flex: 1, alignItems: "center", gap: 3 },
   pageTitle: { fontWeight: "700", letterSpacing: 0.2 },
   statusPill: {
     flexDirection: "row",
@@ -606,19 +606,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
   scroll: { padding: 20, paddingBottom: 48 },
-
   avatarRow: {
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     marginBottom: 20,
     gap: 14,
   },
-  avatarImg: { width: 64, height: 64, borderRadius: 32, borderWidth: 2 },
+  avatarImg: { width: 64, height: 64, borderRadius: 32, borderWidth: 1.5 },
   avatarFallback: {
     width: 64,
     height: 64,
@@ -628,7 +626,7 @@ const styles = StyleSheet.create({
   },
   avatarInfo: { flex: 1 },
   avatarName: { fontWeight: "700", marginBottom: 2 },
-  avatarBiz: { opacity: 0.7 },
+  avatarBiz: { opacity: 0.7, paddingRight: 8 },
   editBadge: {
     width: 28,
     height: 28,
@@ -636,9 +634,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
   sectionCard: {
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     overflow: "hidden",
     marginBottom: 24,
@@ -646,18 +643,21 @@ const styles = StyleSheet.create({
   sectionRow: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    gap: 12,
+    padding: 18,
+    gap: 14,
   },
   sectionIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
   sectionText: { flex: 1 },
   sectionLabel: { fontWeight: "600", marginBottom: 2 },
-  sectionSummary: { opacity: 0.65 },
-  divider: { height: 1, marginLeft: 66 },
+  sectionSummary: { opacity: 0.55 },
+  chevronRight: { opacity: 0.8 },
+  divider: { height: 1, marginLeft: 72, opacity: 0.6 },
 });
+
+export default VendorEditProfile;

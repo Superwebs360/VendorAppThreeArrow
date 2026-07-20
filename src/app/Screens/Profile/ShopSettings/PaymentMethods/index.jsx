@@ -811,10 +811,7 @@ export default function PaymentMethods() {
   const activeCount = methods.filter((m) => m.active).length;
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      edges={["top"]}
-    >
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       {/* ── Header ── */}
       <View style={styles.headerBlock}>
         <Pressable
